@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { parseFormattedText } from "@/lib/utils";
 import { Bot, Send, User, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -172,7 +173,7 @@ export function AnimatedFloatingChat({
                             </span>
                           </div>
                           <p className="text-sm leading-relaxed">
-                            {message.content}
+                            {parseFormattedText(message.content)}
                           </p>
                         </div>
                       </div>

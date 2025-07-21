@@ -10,6 +10,7 @@ import { TopNavbar } from "@/components/top-navbar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { parseFormattedText } from "@/lib/utils";
 import axios from "axios";
 import {
   Download,
@@ -340,10 +341,13 @@ function MeetingNotesApp() {
     setIsProcessing(true);
     setError("");
 
+    setTranscript("");
+    setSummary("");
+    setChatMessages([]);
     try {
       const formData = new FormData();
       formData.append("file", uploadedFile);
-
+      await handleChatReset();
       const response = await axios.post(
         "https://notulensi-api.cml.apps.dataservice.kemenkeu.go.id/transcribe",
         formData,
@@ -366,6 +370,20 @@ function MeetingNotesApp() {
     }
   };
 
+  const handleChatReset = async () => {
+    return await axios.post(
+      "https://notulensi-api.cml.apps.dataservice.kemenkeu.go.id/chat/reset",
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+  };
+
+  useEffect(() => {
+    handleChatReset();
+  }, []);
   const handleCancel = () => {
     const audio = audioRef.current;
     if (audio) {
@@ -905,7 +923,9 @@ function MeetingNotesApp() {
                       </div>
                       <ScrollArea className="flex-1 p-8">
                         <div className="text-base text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap max-w-none">
-                          {expandedView === "transcript" ? transcript : summary}
+                          {expandedView === "transcript"
+                            ? parseFormattedText(transcript)
+                            : parseFormattedText(summary)}
                         </div>
                       </ScrollArea>
                     </div>
@@ -954,7 +974,8 @@ function MeetingNotesApp() {
                     </div>
                     <ScrollArea className="h-96 p-6">
                       <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                        {transcript || "No transcript available yet..."}
+                        {parseFormattedText(transcript) ||
+                          "No transcript available yet..."}
                       </div>
                     </ScrollArea>
                   </div>
@@ -999,7 +1020,8 @@ function MeetingNotesApp() {
                     </div>
                     <ScrollArea className="h-96 p-6">
                       <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                        {summary || "No summary available yet..."}
+                        {parseFormattedText(summary) ||
+                          "No summary available yet..."}
                       </div>
                     </ScrollArea>
                   </div>
