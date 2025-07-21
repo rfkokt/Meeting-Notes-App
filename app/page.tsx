@@ -10,19 +10,20 @@ import { TopNavbar } from "@/components/top-navbar";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import axios from "axios";
 import {
   Download,
+  Gauge,
   Maximize2,
   Pause,
   Play,
   RotateCcw,
   Upload,
   Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
-
 import { useEffect, useRef, useState } from "react";
-
 interface ChatMessage {
   id: string;
   type: "user" | "ai";
@@ -46,10 +47,45 @@ function MeetingNotesApp() {
   const [expandedView, setExpandedView] = useState<
     "transcript" | "summary" | null
   >(null);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [previousVolume, setPreviousVolume] = useState(1);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [showSpeedControl, setShowSpeedControl] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const volumeControlRef = useRef<HTMLDivElement>(null);
+  const speedControlRef = useRef<HTMLDivElement>(null);
   const { themeColors } = useThemeColors();
+
+  const speedOptions = [0.5, 1, 1.25, 1.5, 1.75, 2];
+
+  // Handle click outside to close controls
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        volumeControlRef.current &&
+        !volumeControlRef.current.contains(event.target as Node)
+      ) {
+        setShowVolumeSlider(false);
+      }
+      if (
+        speedControlRef.current &&
+        !speedControlRef.current.contains(event.target as Node)
+      ) {
+        setShowSpeedControl(false);
+      }
+    };
+
+    if (showVolumeSlider || showSpeedControl) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showVolumeSlider, showSpeedControl]);
 
   // Initialize audio element
   useEffect(() => {
@@ -183,6 +219,8 @@ function MeetingNotesApp() {
         // Set the source and load
         audio.src = url;
         audio.load();
+        audio.volume = isMuted ? 0 : volume;
+        audio.playbackRate = playbackSpeed;
       }
     }
   };
@@ -232,6 +270,63 @@ function MeetingNotesApp() {
     }
   };
 
+  const toggleMute = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isMuted) {
+      // Unmute: restore previous volume
+      const volumeToRestore = previousVolume > 0 ? previousVolume : 0.5;
+      setVolume(volumeToRestore);
+      setIsMuted(false);
+      audio.volume = volumeToRestore;
+    } else {
+      // Mute: save current volume and set to 0
+      setPreviousVolume(volume);
+      setVolume(0);
+      setIsMuted(true);
+      audio.volume = 0;
+    }
+  };
+
+  const handleVolumeChange = (newVolume: number) => {
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+
+    // If volume is set to 0, consider it muted
+    if (newVolume === 0) {
+      setIsMuted(true);
+    } else if (isMuted) {
+      // If we're changing volume from 0 to something else, unmute
+      setIsMuted(false);
+    }
+  };
+
+  const handleSpeedChange = (newSpeed: number) => {
+    setPlaybackSpeed(newSpeed);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = newSpeed;
+    }
+  };
+
+  const toggleVolumeSlider = () => {
+    setShowVolumeSlider(!showVolumeSlider);
+    // Close speed control if open
+    if (showSpeedControl) {
+      setShowSpeedControl(false);
+    }
+  };
+
+  const toggleSpeedControl = () => {
+    setShowSpeedControl(!showSpeedControl);
+    // Close volume control if open
+    if (showVolumeSlider) {
+      setShowVolumeSlider(false);
+    }
+  };
+
   const formatTime = (time: number): string => {
     if (!time || isNaN(time) || !isFinite(time)) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -246,54 +341,25 @@ function MeetingNotesApp() {
     setError("");
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
 
-      const mockTranscript = `Meeting Transcript - ${new Date().toLocaleDateString()}
+      const response = await axios.post(
+        "https://notulensi-api.cml.apps.dataservice.kemenkeu.go.id/transcribe",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
-[00:00] John: Good morning everyone, thank you for joining today's quarterly review meeting.
-[00:15] Sarah: Thanks John. I'd like to start by reviewing our Q3 performance metrics.
-[00:30] Mike: Our sales numbers exceeded expectations by 15%, reaching $2.3M in revenue.
-[00:45] Sarah: That's excellent news. The marketing campaigns we launched in July really paid off.
-[01:00] John: What about our customer satisfaction scores?
-[01:15] Lisa: We maintained a 4.7/5 rating across all platforms, with particularly strong feedback on our customer support.
-[01:30] Mike: I think we should discuss the upcoming product launch for Q4.
-[01:45] Sarah: Yes, we're on track for the November release. Beta testing starts next week.
-[02:00] John: Any concerns or blockers we need to address?
-[02:15] Lisa: We might need additional support staff for the holiday season.
-[02:30] John: Let's schedule a follow-up meeting to discuss staffing needs. Great work everyone!`;
+      const { transcription, summary } = response.data;
 
-      const mockSummary = `Meeting Summary
-
-Date & Time: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}
-
-Participants:
-• John (Meeting Lead)
-• Sarah (Marketing)  
-• Mike (Sales)
-• Lisa (Customer Support)
-
-Short Summary:
-Quarterly review meeting discussing Q3 performance and Q4 planning. Strong sales performance with 15% growth and excellent customer satisfaction scores.
-
-Key Points:
-• Q3 revenue reached $2.3M, exceeding targets by 15%
-• Customer satisfaction maintained at 4.7/5 rating
-• Marketing campaigns in July were highly successful
-• Product launch scheduled for November
-
-Decisions:
-• Proceed with November product launch as planned
-• Beta testing to begin next week
-• Schedule follow-up meeting for staffing discussion
-
-Follow-Up Actions:
-• Schedule staffing needs meeting (John)
-• Begin beta testing preparation (Sarah)
-• Prepare holiday season support plan (Lisa)`;
-
-      setTranscript(mockTranscript);
-      setSummary(mockSummary);
+      setTranscript(transcription);
+      setSummary(summary);
     } catch (err) {
+      console.error(err);
       setError("Failed to process the file. Please try again.");
     } finally {
       setIsProcessing(false);
@@ -325,7 +391,7 @@ Follow-Up Actions:
     }
   };
 
-  const handleChatSubmit = () => {
+  const handleChatSubmit = async () => {
     if (!chatInput.trim() || !transcript) return;
 
     const userMessage: ChatMessage = {
@@ -336,18 +402,40 @@ Follow-Up Actions:
     };
 
     setChatMessages((prev) => [...prev, userMessage]);
+    setChatInput("");
 
-    setTimeout(() => {
+    try {
+      setIsThinking(true);
+      const response = await axios.post(
+        "https://notulensi-api.cml.apps.dataservice.kemenkeu.go.id/chat",
+        {
+          message: chatInput,
+          max_history: 0,
+        }
+      );
+      console.log("debug response", response);
+
       const aiResponse: ChatMessage = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `Based on the meeting transcript, I can help answer your question about "${chatInput}". The meeting covered quarterly performance, with strong sales growth of 15% and excellent customer satisfaction scores. Is there a specific aspect you'd like me to elaborate on?`,
+        content: response.data.response,
         timestamp: new Date(),
       };
-      setChatMessages((prev) => [...prev, aiResponse]);
-    }, 1000);
 
-    setChatInput("");
+      setChatMessages((prev) => [...prev, aiResponse]);
+    } catch (error) {
+      console.error("Failed to get AI response:", error);
+      const errorResponse: ChatMessage = {
+        id: (Date.now() + 2).toString(),
+        type: "ai",
+        content:
+          "Sorry, I couldn't process your request. Please try again later.",
+        timestamp: new Date(),
+      };
+      setChatMessages((prev) => [...prev, errorResponse]);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   const handleDownload = () => {
@@ -467,7 +555,153 @@ Follow-Up Actions:
                           <RotateCcw className="h-4 w-4" />
                         </Button>
 
-                        <Volume2 className="h-4 w-4 text-gray-400" />
+                        {/* Volume Control */}
+                        <div className="relative" ref={volumeControlRef}>
+                          <button
+                            onClick={toggleVolumeSlider}
+                            className="p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-600/50 transition-colors"
+                          >
+                            {isMuted || volume === 0 ? (
+                              <VolumeX className="h-4 w-4 text-gray-400 cursor-pointer" />
+                            ) : (
+                              <Volume2 className="h-4 w-4 text-gray-400 cursor-pointer" />
+                            )}
+                          </button>
+
+                          {showVolumeSlider && (
+                            <div className="absolute left-0 bottom-full mb-2 z-20">
+                              <div className="bg-white/98 dark:bg-gray-800/98 backdrop-blur-sm rounded-lg p-4 shadow-xl border border-white/30 dark:border-gray-700/30 min-w-[160px]">
+                                <div className="flex items-center space-x-3">
+                                  <button
+                                    onClick={toggleMute}
+                                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                  >
+                                    {isMuted || volume === 0 ? (
+                                      <VolumeX className="h-3 w-3 text-gray-500" />
+                                    ) : (
+                                      <Volume2 className="h-3 w-3 text-gray-500" />
+                                    )}
+                                  </button>
+                                  <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                    value={volume}
+                                    onChange={(e) =>
+                                      handleVolumeChange(
+                                        Number.parseFloat(e.target.value)
+                                      )
+                                    }
+                                    className="flex-1 h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                    style={{
+                                      background: `linear-gradient(to right, ${
+                                        themeColors.primary
+                                      } 0%, ${themeColors.primary} ${
+                                        volume * 100
+                                      }%, #e5e7eb ${
+                                        volume * 100
+                                      }%, #e5e7eb 100%)`,
+                                    }}
+                                  />
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[2.5rem] font-mono">
+                                    {Math.round(volume * 100)}%
+                                  </span>
+                                </div>
+                                <div className="mt-2 flex justify-between text-xs text-gray-400">
+                                  <button
+                                    onClick={() => handleVolumeChange(0.25)}
+                                    className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                  >
+                                    25%
+                                  </button>
+                                  <button
+                                    onClick={() => handleVolumeChange(0.5)}
+                                    className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                  >
+                                    50%
+                                  </button>
+                                  <button
+                                    onClick={() => handleVolumeChange(0.75)}
+                                    className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                  >
+                                    75%
+                                  </button>
+                                  <button
+                                    onClick={() => handleVolumeChange(1)}
+                                    className="px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                  >
+                                    100%
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Speed Control */}
+                        <div className="relative" ref={speedControlRef}>
+                          <button
+                            onClick={toggleSpeedControl}
+                            className="p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-gray-600/50 transition-colors flex items-center space-x-1"
+                          >
+                            <Gauge className="h-4 w-4 text-gray-400" />
+                            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono min-w-[2rem]">
+                              {playbackSpeed}x
+                            </span>
+                          </button>
+
+                          {showSpeedControl && (
+                            <div className="absolute left-0 bottom-full mb-2 z-20">
+                              <div className="bg-white/98 dark:bg-gray-800/98 backdrop-blur-sm rounded-lg p-4 shadow-xl border border-white/30 dark:border-gray-700/30 min-w-[180px]">
+                                <div className="mb-3">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <Gauge className="h-3 w-3 text-gray-500" />
+                                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                                      Playback Speed
+                                    </span>
+                                  </div>
+                                  <div className="text-center">
+                                    <span className="text-sm font-mono text-gray-700 dark:text-gray-300">
+                                      {playbackSpeed}x
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  {speedOptions.map((speed) => (
+                                    <button
+                                      key={speed}
+                                      onClick={() => handleSpeedChange(speed)}
+                                      className={`px-3 py-2 rounded-lg text-xs font-mono transition-all ${
+                                        playbackSpeed === speed
+                                          ? "text-white shadow-md"
+                                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                      }`}
+                                      style={
+                                        playbackSpeed === speed
+                                          ? {
+                                              backgroundColor:
+                                                themeColors.primary,
+                                            }
+                                          : {}
+                                      }
+                                    >
+                                      {speed}x
+                                    </button>
+                                  ))}
+                                </div>
+                                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                                  <div className="flex justify-between text-xs text-gray-400">
+                                    <span>Slower</span>
+                                    <span>Normal</span>
+                                    <span>Faster</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                           {formatTime(currentTime)} / {formatTime(duration)}
                         </span>
@@ -527,6 +761,32 @@ Follow-Up Actions:
                             position: relative;
                             z-index: 1;
                           }
+
+                          .slider-thumb::-webkit-slider-thumb {
+                            -webkit-appearance: none;
+                            appearance: none;
+                            width: 16px;
+                            height: 16px;
+                            border-radius: 50%;
+                            background: ${themeColors.primary};
+                            cursor: pointer;
+                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+                            transition: transform 0.2s ease;
+                          }
+
+                          .slider-thumb::-webkit-slider-thumb:hover {
+                            transform: scale(1.1);
+                          }
+
+                          .slider-thumb::-moz-range-thumb {
+                            width: 16px;
+                            height: 16px;
+                            border-radius: 50%;
+                            background: ${themeColors.primary};
+                            cursor: pointer;
+                            border: none;
+                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+                          }
                         `}</style>
                         <input
                           type="range"
@@ -545,7 +805,10 @@ Follow-Up Actions:
                         Audio Ready: {audioReady ? "Yes" : "No"} | Duration:{" "}
                         {duration.toFixed(1)}s | Current:{" "}
                         {currentTime.toFixed(1)}s | Playing:{" "}
-                        {isPlaying ? "Yes" : "No"}
+                        {isPlaying ? "Yes" : "No"} | Muted:{" "}
+                        {isMuted ? "Yes" : "No"} | Speed: {playbackSpeed}x |
+                        Volume Slider: {showVolumeSlider ? "Open" : "Closed"} |
+                        Speed Control: {showSpeedControl ? "Open" : "Closed"}
                       </div>
                     </div>
                   )}
@@ -569,7 +832,7 @@ Follow-Up Actions:
                     <Button
                       onClick={handleCancel}
                       variant="outline"
-                      className="flex-1 border-red-300/50 text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-900/20 hover:border-red-400/50 rounded-2xl py-4 font-medium transition-all duration-200 hover:scale-105"
+                      className="flex-1 border-red-300/50 text-red-600 dark:text-red-400 hover:bg-red-50/50 dark:hover:bg-red-900/20 hover:border-red-400/50 rounded-2xl py-4 font-medium transition-all duration-200 hover:scale-105 bg-transparent"
                     >
                       CANCEL
                     </Button>
@@ -744,36 +1007,8 @@ Follow-Up Actions:
               </>
             )}
 
-            {/* Download Button
-            {summary && (
-              <div className="text-center">
-                <ThemedButton
-                  variant="secondary"
-                  onClick={handleDownload}
-                  className="px-12 py-4 rounded-2xl font-medium shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-                >
-                  <Download className="h-5 w-5 mr-3" />
-                  DOWNLOAD SUMMARIZE
-                </ThemedButton>
-              </div>
-            )} */}
-
             {/* Hidden Audio Element */}
             <audio ref={audioRef} preload="metadata" />
-          </div>
-        );
-
-      case "settings":
-        return (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center">
-              <h2 className="text-3xl font-bold mb-2 text-gray-900 dark:text-gray-100">
-                Settings
-              </h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Configure your preferences and account settings.
-              </p>
-            </div>
           </div>
         );
 
@@ -802,6 +1037,7 @@ Follow-Up Actions:
       />
       <main className="transition-all duration-300">{renderContent()}</main>
       <AnimatedFloatingChat
+        isThinking={isThinking}
         transcript={transcript}
         chatMessages={chatMessages}
         chatInput={chatInput}

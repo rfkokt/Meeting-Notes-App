@@ -1,16 +1,25 @@
-"use client"
+"use client";
 
-import { ThemedButton } from "@/components/themed-button"
-import { useThemeColors } from "@/hooks/use-theme-colors"
-import { Input } from "@/components/ui/input"
-import { Mic, Sparkles, ArrowRight, Upload, FileText, BarChart3 } from "lucide-react"
+import { ThemedButton } from "@/components/themed-button";
+import { Input } from "@/components/ui/input";
+import { useThemeColors } from "@/hooks/use-theme-colors";
+import {
+  ArrowRight,
+  BarChart3,
+  FileText,
+  Mic,
+  Sparkles,
+  Upload,
+} from "lucide-react";
+import { useState } from "react";
 
 interface HomeContentProps {
-  onNewMeeting: () => void
+  onNewMeeting: () => void;
 }
 
 export function HomeContent({ onNewMeeting }: HomeContentProps) {
-  const { themeColors } = useThemeColors()
+  const { themeColors } = useThemeColors();
+  const [showComingSoon, setShowComingSoon] = useState(false);
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-4xl mx-auto">
@@ -36,15 +45,19 @@ export function HomeContent({ onNewMeeting }: HomeContentProps) {
 
       {/* Subtitle */}
       <p className="text-lg text-gray-600 dark:text-gray-400 text-center mb-12 max-w-2xl leading-relaxed">
-        Transform your meetings with AI-powered transcription, intelligent summaries, and instant insights. Upload audio
-        files or start live recording to get started.
+        Transform your meetings with AI-powered transcription, intelligent
+        summaries, and instant insights. Upload audio files or start live
+        recording to get started.
       </p>
 
       {/* Quick Action Input */}
       <div className="w-full max-w-2xl mb-8">
         <div className="relative">
           <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-            <Sparkles className="h-5 w-5" style={{ color: themeColors.primary }} />
+            <Sparkles
+              className="h-5 w-5"
+              style={{ color: themeColors.primary }}
+            />
           </div>
           <Input
             placeholder="Ask AI to transcribe, summarize, or analyze your meeting instantly..."
@@ -72,6 +85,7 @@ export function HomeContent({ onNewMeeting }: HomeContentProps) {
         </ThemedButton>
         <ThemedButton
           variant="outline"
+          onClick={() => setShowComingSoon(true)}
           className="px-8 py-4 rounded-2xl font-medium hover:scale-105"
           style={{
             backgroundColor: "transparent",
@@ -91,11 +105,17 @@ export function HomeContent({ onNewMeeting }: HomeContentProps) {
             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
             style={{ backgroundColor: `${themeColors.primary}20` }}
           >
-            <FileText className="h-6 w-6" style={{ color: themeColors.primary }} />
+            <FileText
+              className="h-6 w-6"
+              style={{ color: themeColors.primary }}
+            />
           </div>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Smart Transcription</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Smart Transcription
+          </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Convert audio to accurate text with speaker identification and timestamps.
+            Convert audio to accurate text with speaker identification and
+            timestamps.
           </p>
         </div>
 
@@ -104,9 +124,14 @@ export function HomeContent({ onNewMeeting }: HomeContentProps) {
             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
             style={{ backgroundColor: `${themeColors.secondary}20` }}
           >
-            <Sparkles className="h-6 w-6" style={{ color: themeColors.secondary }} />
+            <Sparkles
+              className="h-6 w-6"
+              style={{ color: themeColors.secondary }}
+            />
           </div>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">AI Summaries</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            AI Summaries
+          </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Generate key points, decisions, and action items automatically.
           </p>
@@ -117,11 +142,17 @@ export function HomeContent({ onNewMeeting }: HomeContentProps) {
             className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
             style={{ backgroundColor: `${themeColors.primary}20` }}
           >
-            <BarChart3 className="h-6 w-6" style={{ color: themeColors.primary }} />
+            <BarChart3
+              className="h-6 w-6"
+              style={{ color: themeColors.primary }}
+            />
           </div>
-          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">Smart Insights</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Smart Insights
+          </h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Ask questions about your meetings and get instant AI-powered answers.
+            Ask questions about your meetings and get instant AI-powered
+            answers.
           </p>
         </div>
       </div>
@@ -130,6 +161,37 @@ export function HomeContent({ onNewMeeting }: HomeContentProps) {
       <p className="text-sm text-gray-500 dark:text-gray-400 mt-12 text-center">
         MeetingAI aims to help, but reviewing key info is always wise.
       </p>
+      {showComingSoon && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-gray-700/20 p-8 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: `${themeColors.secondary}20` }}
+              >
+                <Mic
+                  className="h-8 w-8"
+                  style={{ color: themeColors.secondary }}
+                />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Coming Soon!
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Live recording feature is currently under development. Stay
+                tuned for updates!
+              </p>
+              <ThemedButton
+                variant="primary"
+                onClick={() => setShowComingSoon(false)}
+                className="px-6 py-2 rounded-xl"
+              >
+                Got it
+              </ThemedButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
-  )
+  );
 }

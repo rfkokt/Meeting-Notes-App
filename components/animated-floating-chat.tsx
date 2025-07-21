@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Bot, Send, User, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ChatMessage {
   id: string;
@@ -23,6 +23,7 @@ interface AnimatedFloatingChatProps {
   chatInput: string;
   onChatInputChange: (value: string) => void;
   onChatSubmit: () => void;
+  isThinking: boolean;
 }
 
 export function AnimatedFloatingChat({
@@ -31,17 +32,17 @@ export function AnimatedFloatingChat({
   chatInput,
   onChatInputChange,
   onChatSubmit,
+  isThinking,
 }: AnimatedFloatingChatProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const { themeColors } = useThemeColors();
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = useCallback(() => {
     if (!chatInput.trim() || !transcript) return;
 
     onChatSubmit();
-    setIsTyping(true);
-    setTimeout(() => setIsTyping(false), 2000);
   }, [chatInput, transcript, onChatSubmit]);
 
   const handleKeyPress = useCallback(
@@ -57,6 +58,14 @@ export function AnimatedFloatingChat({
   const toggleChat = useCallback(() => {
     setIsOpen((prev) => !prev);
   }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages, isThinking]);
 
   return (
     <>
@@ -170,7 +179,7 @@ export function AnimatedFloatingChat({
                     ))}
 
                     {/* Typing Indicator */}
-                    {isTyping && (
+                    {isThinking && (
                       <div className="flex justify-start">
                         <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-4 border border-white/20 dark:border-gray-700/20">
                           <div className="flex items-center space-x-2 mb-2">
@@ -202,6 +211,7 @@ export function AnimatedFloatingChat({
                         </div>
                       </div>
                     )}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
               </div>
